@@ -10,6 +10,7 @@ struct Vehicle
     DIESEL::UInt8
     ELECTRIC::UInt8
     price::Float64
+    ISVEH::UInt8
 end
 
 struct Manufacturer
