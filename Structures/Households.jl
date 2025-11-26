@@ -15,11 +15,17 @@ struct Household
     # this is called Household because it overwrites the default constructor function
     # I put the default arg here not in the declaration of the structrue 
     function Household(id::UInt64, portfolio::Pair{Vehicle, Vehicle}, α::Real=.5)
+        # create houshold features
+        v_1, v_2 = portfolio
+        ordered_portfolio = order_veh(v_1, v_2)
+        portfolio_size = v_1.ISVEH + v_2.ISVEH
+        income, children = generate_income_family(portfolio_size)
+
         # Draw preferences inside constructor
         preferences = draw_preferences()
         
         # Create utility function using those preferences
-        utility_func = create_single_utility(preferences)
+        utility_func = create_single_utility(preferences,income)
         
         # Create portfolio utility function
         # I need some meta preferences 
@@ -27,10 +33,8 @@ struct Household
         portfolio_func = meta_utility(utility_func, comp_preferences,α)
         
         # this can come later since we don't evalueate the utility yet :) planning ahead
-        v_1, v_2 = portfolio
-        ordered_portfolio = order_veh(v_1, v_2)
-        portfolio_size = v_1.ISVEH + v_2.ISVEH
-        new(UInt64(id), portfolio_func, ordered_portfolio, income, Float64(α), preferences, comp_preferences, portfolio_size)
+ 
+        new(UInt64(id), portfolio_func, ordered_portfolio, income, children, Float64(α), preferences, comp_preferences, portfolio_size)
     end
 end
 
@@ -85,11 +89,11 @@ end
 
 function generate_income_family(portfolio_size)
     if portfolio_size == 2
-        return rand(Uniform(650000,2000000)), rand(Binomial(5,p=.6))
+        return floor(UInt64, rand(Uniform(650000,2000000))), rand(Binomial(5, .6))
     elseif portfolio_size == 1
-        return rand(Uniform(200000,1000000)), rand(Binomial(5,p=.2))
+        return floor(UInt64, rand(Uniform(200000,1000000))), rand(Binomial(5, .2))
     elseif portfolio_size == 0
-        return rand(Uniform(00000,800000)), rand(Binomial(5,p=.1))
+        return floor(UInt64, rand(Uniform(00000,800000))), rand(Binomial(5, .1))
     end
 end
 # This function checks to see if the Vehicle portfolio is Complementary
@@ -128,9 +132,9 @@ function meta_utility(utility::Function, β::Dict{Symbol,Float64}, α::Real)
 end
 
 # this is the single car utility function
-function create_single_utility(β::Dict{Symbol, Float64},hh::Household)
+function create_single_utility(β::Dict{Symbol, Float64},income::UInt64)
     function utility(v::Vehicle, price::Real)
-        u = β[:price] * ((Household.income - price) / 100000)
+        u = β[:price] * ((income - price) / 100000)
         u += β[:age] * v.age
         u += β[:mileage] * (v.mileage / 100000)
         # Brand dummies
